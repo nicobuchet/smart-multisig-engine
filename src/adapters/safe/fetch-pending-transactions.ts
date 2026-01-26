@@ -1,24 +1,22 @@
-import type { Address } from "viem";
-import type { SafePendingTransaction } from "../../core/types.js";
+import SafeApiKit from "@safe-global/api-kit";
+import type { SafeMultisigTransactionResponse } from "@safe-global/types-kit";
+
+export interface FetchPendingTransactionsParams {
+  chainId: bigint;
+  safeAddress: string;
+  txServiceUrl?: string;
+  apiKey?: string;
+}
 
 export async function fetchPendingTransactions(
-  baseUrl: string,
-  safeAddress: Address,
-): Promise<SafePendingTransaction[]> {
-  const url = `${baseUrl}/api/v1/safes/${safeAddress}/multisig-transactions/?executed=false&ordering=-nonce`;
-  const response = await fetch(url);
+  params: FetchPendingTransactionsParams,
+): Promise<SafeMultisigTransactionResponse[]> {
+  const apiKit = new SafeApiKit({
+    chainId: params.chainId,
+    ...(params.txServiceUrl && { txServiceUrl: params.txServiceUrl }),
+    apiKey: params.apiKey,
+  });
 
-  console.log(
-    `Fetching pending transactions from ${url}, status: ${response.status}`,
-    response.json(),
-  );
-
-  if (!response.ok) {
-    throw new Error(
-      `Safe Transaction Service returned ${response.status}: ${response.statusText}`,
-    );
-  }
-
-  const json = (await response.json()) as { results: SafePendingTransaction[] };
-  return json.results;
+  const response = await apiKit.getPendingTransactions(params.safeAddress);
+  return response.results;
 }

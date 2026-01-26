@@ -1,9 +1,10 @@
-import type { SafePendingTransaction, TxMatchCriteria } from "./types.js";
+import type { SafeMultisigTransactionResponse } from "@safe-global/types-kit";
+import type { TxMatchCriteria } from "./types.js";
 
 export function matchPendingTransaction(
-  pendingTxs: SafePendingTransaction[],
+  pendingTxs: SafeMultisigTransactionResponse[],
   criteria: TxMatchCriteria,
-): SafePendingTransaction | undefined {
+): SafeMultisigTransactionResponse | undefined {
   return pendingTxs.find(
     (tx) =>
       tx.to.toLowerCase() === criteria.to.toLowerCase() &&

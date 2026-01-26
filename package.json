@@ -38,6 +38,8 @@
     "vitest": "^3.0.0"
   },
   "dependencies": {
+    "@safe-global/api-kit": "^4.0.1",
+    "@safe-global/types-kit": "^3.0.0",
     "@wagmi/core": "^3.3.1",
     "viem": "^2.44.4"
   }

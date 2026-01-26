@@ -1,4 +1,5 @@
 import type { Abi, Address, Hex } from "viem";
+export type { SafeMultisigTransactionResponse } from "@safe-global/types-kit";
 
 export interface ContractCallParams {
   address: Address;
@@ -14,22 +15,6 @@ export interface EncodedCallData {
   to: Address;
   data: Hex;
   value: bigint;
-}
-
-export interface SafePendingTransaction {
-  safeTxHash: string;
-  to: Address;
-  value: string;
-  data: Hex | null;
-  operation: number;
-  nonce: number;
-  submissionDate: string;
-  confirmations: Array<{
-    owner: Address;
-    signature: string;
-    submissionDate: string;
-  }>;
-  isExecuted: boolean;
 }
 
 export interface TxMatchCriteria {

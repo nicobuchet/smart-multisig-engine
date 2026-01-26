@@ -1,6 +1,5 @@
 import { extractCallData } from "../../core/extract-call-data.js";
 import { matchPendingTransaction } from "../../core/match-pending-tx.js";
-import { getSafeServiceUrl } from "../../core/safe-tx-service-urls.js";
 import { fetchPendingTransactions } from "./fetch-pending-transactions.js";
 import { simulateContractCall } from "./simulate-contract-call.js";
 import { writeContractCall } from "./write-contract-call.js";
@@ -19,7 +18,8 @@ export async function submitAndFindSafeTx(
   const {
     config,
     safeAddress,
-    serviceUrl,
+    txServiceUrl,
+    apiKey,
     pollingInterval = 3000,
     maxAttempts = 20,
     ...callParams
@@ -29,21 +29,24 @@ export async function submitAndFindSafeTx(
 
   const simulation = await simulateContractCall(config, callParams);
 
-  const txHash = await writeContractCall(config, simulation.request as Parameters<typeof writeContractCall>[1]);
+  await writeContractCall(config, simulation.request as Parameters<typeof writeContractCall>[1]);
 
-  const baseUrl =
-    serviceUrl ?? getSafeServiceUrl(callParams.chainId ?? (await getChainId(config)));
+  const chainId = BigInt(callParams.chainId ?? (await getChainId(config)));
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     await delay(pollingInterval);
 
-    const pendingTxs = await fetchPendingTransactions(baseUrl, safeAddress);
+    const pendingTxs = await fetchPendingTransactions({
+      chainId,
+      safeAddress,
+      txServiceUrl,
+      apiKey,
+    });
     const match = matchPendingTransaction(pendingTxs, callData);
 
     if (match) {
       return {
         safeTxHash: match.safeTxHash,
-        txHash,
       };
     }
   }
