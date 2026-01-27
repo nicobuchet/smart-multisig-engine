@@ -14,13 +14,44 @@ Peer dependencies: `@wagmi/core`, `viem`.
 
 ## Quick Start
 
-Use `submitAndFindSafeTx` to simulate, submit, and find the Safe transaction hash in one call:
+Use `submitTx` with the generic adapter interface to submit transactions to any supported multisig:
 
 ```typescript
-import { submitAndFindSafeTx } from "smart-multisig-engine";
+import { submitTx, waitForExecution } from "smart-multisig-engine";
 import { config } from "./wagmi-config";
 
-const { safeTxHash, txHash } = await submitAndFindSafeTx({
+// Submit a transaction
+const { txHash } = await submitTx({
+  adapter: "safe",
+  config,
+  walletAddress: "0xYourSafeAddress",
+  address: "0xTargetContract",
+  abi: contractAbi,
+  functionName: "transfer",
+  args: [recipientAddress, amount],
+  value: 0n,
+  chainId: 1n,
+});
+
+console.log("Safe TX Hash:", txHash);
+
+// Wait for execution
+const { transactionHash } = await waitForExecution({
+  adapter: "safe",
+  txHash,
+  chainId: 1n,
+});
+
+console.log("On-chain TX Hash:", transactionHash);
+```
+
+Or use the Safe adapter directly for more control:
+
+```typescript
+import { safe } from "smart-multisig-engine";
+import { config } from "./wagmi-config";
+
+const { safeTxHash, txHash } = await safe.submitAndFindSafeTx({
   config,
   safeAddress: "0xYourSafeAddress",
   address: "0xTargetContract",
@@ -40,13 +71,138 @@ console.log("On-chain TX Hash:", txHash);
 The library follows a **core/adapter** pattern:
 
 - **Core** — Pure functions with no I/O. Can be used independently for encoding, matching, or URL resolution.
-- **Adapter (Safe)** — I/O functions that wrap wagmi contract calls and the Safe Transaction Service API.
+- **Adapters** — I/O implementations that wrap contract calls and external APIs. Currently supports Safe multisig.
+
+### Generic Adapter Interface
+
+The library provides adapter-agnostic entry points that route to the appropriate implementation:
+
+```typescript
+import { submitTx, waitForExecution, fetchPendingTxs, simulate, write } from "smart-multisig-engine";
+
+// All functions take an `adapter` parameter to select the implementation
+await submitTx({ adapter: "safe", ... });
+await waitForExecution({ adapter: "safe", ... });
+await fetchPendingTxs({ adapter: "safe", ... });
+await simulate({ adapter: "safe", ... });
+await write({ adapter: "safe", ... });
+```
+
+### Direct Adapter Access
+
+For adapter-specific features, import the adapter namespace directly:
+
+```typescript
+import { safe } from "smart-multisig-engine";
+
+// Access Safe-specific functions
+await safe.submitAndFindSafeTx({ ... });
+await safe.waitForExecution({ ... });
+await safe.fetchPendingTransactions({ ... });
+await safe.simulateContractCall(config, { ... });
+await safe.writeContractCall(config, request);
+```
 
 ## API Reference
 
-### Orchestrator
+### Generic Adapter Functions
 
-#### `submitAndFindSafeTx(options): Promise<SubmitAndFindSafeTxResult>`
+These functions provide a unified interface across all adapters.
+
+#### `submitTx(options): Promise<SubmitTxResult>`
+
+Submit a transaction through the specified adapter.
+
+```typescript
+interface SubmitTxOptions {
+  adapter: "safe";             // Adapter type
+  config: Config;              // wagmi Config instance
+  walletAddress: Address;      // The multisig wallet address
+  address: Address;            // Target contract address
+  abi: Abi;                    // Contract ABI
+  functionName: string;        // Function to call
+  args?: readonly unknown[];   // Function arguments
+  value?: bigint;              // ETH value (default: 0n)
+  chainId?: number;            // Chain ID
+  txServiceUrl?: string;       // Override service URL
+  apiKey?: string;             // API key for the service
+  pollingInterval?: number;    // Polling interval in ms
+  maxAttempts?: number;        // Max poll attempts
+}
+
+interface SubmitTxResult {
+  txHash: string;              // The transaction hash (safeTxHash for Safe)
+}
+```
+
+#### `waitForExecution(options): Promise<WaitForExecutionResult>`
+
+Wait for a transaction to be executed on-chain.
+
+```typescript
+interface WaitForExecutionOptions {
+  adapter: "safe";             // Adapter type
+  txHash: string;              // Transaction hash to wait for
+  chainId: bigint;             // Chain ID
+  txServiceUrl?: string;       // Override service URL
+  apiKey?: string;             // API key for the service
+  pollingInterval?: number;    // Polling interval in ms (default: 5000)
+  maxAttempts?: number;        // Max poll attempts (default: 60)
+}
+
+interface WaitForExecutionResult {
+  transactionHash: string;     // The on-chain transaction hash
+}
+```
+
+#### `fetchPendingTxs(options): Promise<unknown[]>`
+
+Fetch pending transactions for a wallet.
+
+```typescript
+interface FetchPendingOptions {
+  adapter: "safe";             // Adapter type
+  walletAddress: string;       // The multisig wallet address
+  chainId: bigint;             // Chain ID
+  txServiceUrl?: string;       // Override service URL
+  apiKey?: string;             // API key for the service
+}
+```
+
+#### `simulate(options): Promise<unknown>`
+
+Simulate a contract call before submission.
+
+```typescript
+interface SimulateOptions {
+  adapter: "safe";             // Adapter type
+  config: Config;              // wagmi Config instance
+  address: Address;            // Target contract address
+  abi: Abi;                    // Contract ABI
+  functionName: string;        // Function to call
+  args?: readonly unknown[];   // Function arguments
+  value?: bigint;              // ETH value
+  chainId?: number;            // Chain ID
+}
+```
+
+#### `write(options): Promise<string>`
+
+Write a contract call (submit the transaction).
+
+```typescript
+interface WriteOptions {
+  adapter: "safe";             // Adapter type
+  config: Config;              // wagmi Config instance
+  request: unknown;            // Request from simulation result
+}
+```
+
+---
+
+### Safe Adapter
+
+#### `safe.submitAndFindSafeTx(options): Promise<SubmitAndFindSafeTxResult>`
 
 Full flow: simulate → write → poll Safe TX Service → match → return `safeTxHash`.
 
@@ -68,7 +224,26 @@ interface SubmitAndFindSafeTxOptions {
 
 interface SubmitAndFindSafeTxResult {
   safeTxHash: string;          // The Safe transaction hash
-  txHash: `0x${string}`;      // The on-chain transaction hash
+  txHash: `0x${string}`;       // The on-chain transaction hash
+}
+```
+
+#### `safe.waitForExecution(options): Promise<WaitForExecutionResult>`
+
+Poll the Safe Transaction Service until a transaction is executed.
+
+```typescript
+interface WaitForExecutionOptions {
+  safeTxHash: string;          // The Safe transaction hash to monitor
+  chainId: bigint;             // Chain ID
+  txServiceUrl?: string;       // Override Safe TX Service URL
+  apiKey?: string;             // API key for the Safe service
+  pollingInterval?: number;    // Polling interval in ms (default: 5000)
+  maxAttempts?: number;        // Max poll attempts (default: 60)
+}
+
+interface WaitForExecutionResult {
+  transactionHash: string;     // The on-chain transaction hash
 }
 ```
 
@@ -136,16 +311,16 @@ The `Record<number, string>` map of supported chain IDs:
 
 ---
 
-### Adapter Utilities
+### Safe Low-Level Utilities
 
-#### `simulateContractCall(config, params)`
+#### `safe.simulateContractCall(config, params)`
 
 Wraps wagmi's `simulateContract`. Validates the transaction will succeed before submission.
 
 ```typescript
-import { simulateContractCall } from "smart-multisig-engine";
+import { safe } from "smart-multisig-engine";
 
-const simulation = await simulateContractCall(config, {
+const simulation = await safe.simulateContractCall(config, {
   address: "0xContract",
   abi: myAbi,
   functionName: "transfer",
@@ -153,59 +328,68 @@ const simulation = await simulateContractCall(config, {
 });
 ```
 
-#### `writeContractCall(config, request): Promise<Hex>`
+#### `safe.writeContractCall(config, request): Promise<Hex>`
 
 Wraps wagmi's `writeContract`. Accepts the `request` from a prior simulation result.
 
 ```typescript
-import { writeContractCall } from "smart-multisig-engine";
+import { safe } from "smart-multisig-engine";
 
-const txHash = await writeContractCall(config, simulation.request);
+const txHash = await safe.writeContractCall(config, simulation.request);
 ```
 
-#### `fetchPendingTransactions(baseUrl, safeAddress): Promise<SafePendingTransaction[]>`
+#### `safe.fetchPendingTransactions(options): Promise<SafePendingTransaction[]>`
 
 Fetches pending (unexecuted) multisig transactions from the Safe Transaction Service REST API.
 
 ```typescript
-import { fetchPendingTransactions, getSafeServiceUrl } from "smart-multisig-engine";
+import { safe } from "smart-multisig-engine";
 
-const baseUrl = getSafeServiceUrl(1);
-const pending = await fetchPendingTransactions(baseUrl, "0xSafeAddress");
+const pending = await safe.fetchPendingTransactions({
+  safeAddress: "0xSafeAddress",
+  chainId: 1n,
+  apiKey: "optional-api-key",
+});
 ```
 
 ---
 
 ## Using Individual Bricks
 
-The orchestrator is a convenience wrapper. You can compose the bricks yourself for custom flows:
+The high-level functions are convenience wrappers. You can compose the bricks yourself for custom flows:
 
 ```typescript
 import {
   extractCallData,
   matchPendingTransaction,
-  getSafeServiceUrl,
-  simulateContractCall,
-  writeContractCall,
-  fetchPendingTransactions,
+  safe,
 } from "smart-multisig-engine";
 
 // 1. Encode the call data
 const callData = extractCallData({ abi, functionName, args, address, value });
 
 // 2. Simulate
-const simulation = await simulateContractCall(config, { abi, functionName, args, address, value });
+const simulation = await safe.simulateContractCall(config, { abi, functionName, args, address, value });
 
 // 3. Submit on-chain
-const txHash = await writeContractCall(config, simulation.request);
+const txHash = await safe.writeContractCall(config, simulation.request);
 
 // 4. Poll for the pending Safe transaction
-const baseUrl = getSafeServiceUrl(chainId);
-const pending = await fetchPendingTransactions(baseUrl, safeAddress);
+const pending = await safe.fetchPendingTransactions({
+  safeAddress,
+  chainId: 1n,
+});
 
 // 5. Match
 const match = matchPendingTransaction(pending, callData);
 console.log(match?.safeTxHash);
+
+// 6. Wait for execution
+const result = await safe.waitForExecution({
+  safeTxHash: match.safeTxHash,
+  chainId: 1n,
+});
+console.log("Executed:", result.transactionHash);
 ```
 
 ## Development

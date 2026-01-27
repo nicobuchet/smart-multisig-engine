@@ -23,7 +23,7 @@ export interface SubmitTxResult {
   txHash: string;
 }
 
-export interface WaitExecutionOptions extends AdapterServiceOptions {
+export interface WaitForExecutionOptions extends AdapterServiceOptions {
   adapter: AdapterType;
   txHash: string;
   chainId: bigint;
@@ -31,7 +31,7 @@ export interface WaitExecutionOptions extends AdapterServiceOptions {
   maxAttempts?: number;
 }
 
-export interface WaitExecutionResult {
+export interface WaitForExecutionResult {
   transactionHash: string;
 }
 
