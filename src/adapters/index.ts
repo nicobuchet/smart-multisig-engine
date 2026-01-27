@@ -3,8 +3,8 @@ import type {
   AdapterType,
   SubmitTxOptions,
   SubmitTxResult,
-  WaitExecutionOptions,
-  WaitExecutionResult,
+  WaitForExecutionOptions,
+  WaitForExecutionResult,
   FetchPendingOptions,
   SimulateOptions,
   WriteOptions,
@@ -32,13 +32,13 @@ export async function submitTx(
   return { txHash: result.safeTxHash };
 }
 
-export async function waitExecution(
-  options: WaitExecutionOptions,
-): Promise<WaitExecutionResult> {
+export async function waitForExecution(
+  options: WaitForExecutionOptions,
+): Promise<WaitForExecutionResult> {
   const { adapter, txHash, ...rest } = options;
   assertAdapter(adapter);
 
-  const result = await adapters[adapter].waitExecution({
+  const result = await adapters[adapter].waitForExecution({
     safeTxHash: txHash,
     ...rest,
   });

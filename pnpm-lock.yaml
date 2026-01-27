@@ -16,11 +16,17 @@ importers:
         version: 3.0.0(typescript@5.9.3)
       '@wagmi/core':
         specifier: ^3.3.1
-        version: 3.3.1(ox@0.11.3(typescript@5.9.3))(typescript@5.9.3)(viem@2.44.4(typescript@5.9.3))
+        version: 3.3.1(@tanstack/query-core@5.90.20)(ox@0.11.3(typescript@5.9.3))(react@19.2.4)(typescript@5.9.3)(viem@2.44.4(typescript@5.9.3))
       viem:
         specifier: ^2.44.4
         version: 2.44.4(typescript@5.9.3)
     devDependencies:
+      '@tanstack/react-query':
+        specifier: ^5.0.0
+        version: 5.90.20(react@19.2.4)
+      react:
+        specifier: ^18.0.0 || ^19.0.0
+        version: 19.2.4
       tsup:
         specifier: ^8.0.0
         version: 8.5.1(postcss@8.5.6)(typescript@5.9.3)
@@ -369,6 +375,14 @@ packages:
   '@scure/bip39@1.6.0':
     resolution: {integrity: sha512-+lF0BbLiJNwVlev4eKelw1WWLaiKXw7sSl8T6FvBlWkdX+94aGJ4o8XjUdlyhTCjd8c+B3KT3JfS8P0bLRNU6A==}
 
+  '@tanstack/query-core@5.90.20':
+    resolution: {integrity: sha512-OMD2HLpNouXEfZJWcKeVKUgQ5n+n3A2JFmBaScpNDUqSrQSjiveC7dKMe53uJUg1nDG16ttFPz2xfilz6i2uVg==}
+
+  '@tanstack/react-query@5.90.20':
+    resolution: {integrity: sha512-vXBxa+qeyveVO7OA0jX1z+DeyCA4JKnThKv411jd5SORpBKgkcVnYKCiBgECvADvniBX7tobwBmg01qq9JmMJw==}
+    peerDependencies:
+      react: ^18 || ^19
+
   '@types/chai@5.2.3':
     resolution: {integrity: sha512-Mw558oeA9fFbv65/y4mHtXDs9bPnFMZAL/jxdPFUpOHHIXX91mcgEHbS5Lahr+pwZFR8A7GQleRWeI6cGFC2UA==}
 
@@ -651,6 +665,10 @@ packages:
   pvutils@1.1.5:
     resolution: {integrity: sha512-KTqnxsgGiQ6ZAzZCVlJH5eOjSnvlyEgx1m8bkRJfOhmGRqfo5KLvmAlACQkrjEtOQ4B7wF9TdSLIs9O90MX9xA==}
     engines: {node: '>=16.0.0'}
+
+  react@19.2.4:
+    resolution: {integrity: sha512-9nfp2hYpCwOjAN+8TZFGhtWEwgvWHXqESH8qT89AT/lWklpLON22Lc8pEtnpsZz7VmawabSU0gCjnj8aC0euHQ==}
+    engines: {node: '>=0.10.0'}
 
   readdirp@4.1.2:
     resolution: {integrity: sha512-GDhwkLfywWL2s6vEjyhri+eXmfH6j1L7JE27WhqLeYzoh/A3DBaYGEj2H/HFZCn/kMfim73FXxEJTw06WtxQwg==}
@@ -1128,6 +1146,13 @@ snapshots:
       '@noble/hashes': 1.8.0
       '@scure/base': 1.2.6
 
+  '@tanstack/query-core@5.90.20': {}
+
+  '@tanstack/react-query@5.90.20(react@19.2.4)':
+    dependencies:
+      '@tanstack/query-core': 5.90.20
+      react: 19.2.4
+
   '@types/chai@5.2.3':
     dependencies:
       '@types/deep-eql': 4.0.2
@@ -1179,13 +1204,14 @@ snapshots:
       loupe: 3.2.1
       tinyrainbow: 2.0.0
 
-  '@wagmi/core@3.3.1(ox@0.11.3(typescript@5.9.3))(typescript@5.9.3)(viem@2.44.4(typescript@5.9.3))':
+  '@wagmi/core@3.3.1(@tanstack/query-core@5.90.20)(ox@0.11.3(typescript@5.9.3))(react@19.2.4)(typescript@5.9.3)(viem@2.44.4(typescript@5.9.3))':
     dependencies:
       eventemitter3: 5.0.1
       mipd: 0.0.7(typescript@5.9.3)
       viem: 2.44.4(typescript@5.9.3)
-      zustand: 5.0.0
+      zustand: 5.0.0(react@19.2.4)
     optionalDependencies:
+      '@tanstack/query-core': 5.90.20
       ox: 0.11.3(typescript@5.9.3)
       typescript: 5.9.3
     transitivePeerDependencies:
@@ -1393,6 +1419,8 @@ snapshots:
 
   pvutils@1.1.5:
     optional: true
+
+  react@19.2.4: {}
 
   readdirp@4.1.2: {}
 
@@ -1621,4 +1649,6 @@ snapshots:
 
   ws@8.18.3: {}
 
-  zustand@5.0.0: {}
+  zustand@5.0.0(react@19.2.4):
+    optionalDependencies:
+      react: 19.2.4
