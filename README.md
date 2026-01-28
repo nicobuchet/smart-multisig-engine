@@ -12,6 +12,8 @@ pnpm add smart-multisig-engine
 
 Peer dependencies: `@wagmi/core`, `viem`.
 
+Optional peer dependencies for React hooks: `react`, `@tanstack/react-query`.
+
 ## Quick Start
 
 Use `submitTx` with the generic adapter interface to submit transactions to any supported multisig:
@@ -391,6 +393,196 @@ const result = await safe.waitForExecution({
 });
 console.log("Executed:", result.transactionHash);
 ```
+
+## React Hooks
+
+The library provides React Query hooks via a separate entry point. These hooks wrap the adapter functions and provide a familiar React Query interface.
+
+```bash
+# Requires these peer dependencies
+pnpm add react @tanstack/react-query
+```
+
+```typescript
+import {
+  useSubmitTx,
+  useWaitForExecution,
+  useWaitForExecutionReceipt,
+  useFetchPendingTxs,
+  useSimulate,
+  useWrite,
+} from "smart-multisig-engine/react";
+```
+
+### Hooks Overview
+
+| Hook | Type | Description |
+|------|------|-------------|
+| `useSubmitTx` | Mutation | Submit a transaction through an adapter |
+| `useWaitForExecution` | Query | Wait for a transaction to be executed |
+| `useWaitForExecutionReceipt` | Query | Wait for execution + fetch receipt with logs |
+| `useFetchPendingTxs` | Query | Fetch pending transactions for a wallet |
+| `useSimulate` | Query | Simulate a contract call |
+| `useWrite` | Mutation | Write a contract call |
+
+### `useSubmitTx`
+
+Mutation hook for submitting transactions.
+
+```typescript
+const { mutate, mutateAsync, isPending, isSuccess, data } = useSubmitTx();
+
+// Submit a transaction
+mutate({
+  adapter: "safe",
+  config,
+  walletAddress: "0xSafe...",
+  address: "0xContract...",
+  abi,
+  functionName: "transfer",
+  args: [recipient, amount],
+  chainId: 11155111n,
+});
+
+// Or with async/await
+const { txHash } = await mutateAsync({ ... });
+```
+
+### `useWaitForExecution`
+
+Query hook that waits for a Safe transaction to be executed. Maintains a stable loading state throughout polling (similar to wagmi's `useWaitForTransactionReceipt`).
+
+```typescript
+interface UseWaitForExecutionOptions {
+  adapter: "safe";
+  txHash: string;
+  chainId: bigint;
+  txServiceUrl?: string;
+  apiKey?: string;
+  enabled?: boolean;           // Default: true
+  pollingInterval?: number;    // Default: 5000ms
+  timeout?: number;            // Default: 120000ms (2 min)
+}
+```
+
+```typescript
+const { data, isLoading, isSuccess, isError } = useWaitForExecution({
+  adapter: "safe",
+  txHash: safeTxHash,
+  chainId: 11155111n,
+  timeout: 120000,  // Fail after 2 minutes
+  enabled: !!safeTxHash,
+});
+
+// States are stable throughout polling:
+// - isLoading = true while waiting
+// - isSuccess = true once executed
+// - isError = true if timeout reached
+
+if (isSuccess) {
+  console.log("Executed:", data.transactionHash);
+}
+```
+
+### `useWaitForExecutionReceipt`
+
+Query hook that waits for execution AND fetches the full transaction receipt with logs.
+
+```typescript
+interface UseWaitForExecutionReceiptOptions {
+  adapter: "safe";
+  txHash: string;
+  chainId: bigint;
+  config: Config;              // wagmi config for fetching receipt
+  txServiceUrl?: string;
+  apiKey?: string;
+  enabled?: boolean;           // Default: true
+  pollingInterval?: number;    // Default: 5000ms
+  timeout?: number;            // Default: 120000ms
+  confirmations?: number;      // Default: 1
+}
+```
+
+```typescript
+const { data, isLoading, isSuccess } = useWaitForExecutionReceipt({
+  adapter: "safe",
+  txHash: safeTxHash,
+  chainId: 11155111n,
+  config: wagmiConfig,
+  confirmations: 1,
+});
+
+if (isSuccess) {
+  console.log("Transaction hash:", data.transactionHash);
+  console.log("Logs:", data.receipt.logs);
+  console.log("Gas used:", data.receipt.gasUsed);
+}
+```
+
+### `useFetchPendingTxs`
+
+Query hook for fetching pending transactions.
+
+```typescript
+const { data: pending, isLoading } = useFetchPendingTxs({
+  adapter: "safe",
+  walletAddress: "0xSafe...",
+  chainId: 11155111n,
+  refetchInterval: 10000,  // Optional: auto-refresh every 10s
+});
+```
+
+### Full Example
+
+```typescript
+import { useSubmitTx, useWaitForExecutionReceipt } from "smart-multisig-engine/react";
+
+function SafeTransaction() {
+  const submitTx = useSubmitTx();
+
+  const { data, isLoading, isSuccess } = useWaitForExecutionReceipt({
+    adapter: "safe",
+    txHash: submitTx.data?.txHash,
+    chainId: 11155111n,
+    config: wagmiConfig,
+    enabled: !!submitTx.data?.txHash,
+  });
+
+  const handleSubmit = () => {
+    submitTx.mutate({
+      adapter: "safe",
+      config: wagmiConfig,
+      walletAddress: safeAddress,
+      address: contractAddress,
+      abi: contractAbi,
+      functionName: "transfer",
+      args: [recipient, amount],
+      chainId: 11155111n,
+    });
+  };
+
+  return (
+    <div>
+      <button onClick={handleSubmit} disabled={submitTx.isPending}>
+        {submitTx.isPending ? "Submitting..." : "Submit Transaction"}
+      </button>
+
+      {submitTx.isSuccess && !isSuccess && (
+        <p>Waiting for execution... {isLoading && "(polling)"}</p>
+      )}
+
+      {isSuccess && (
+        <div>
+          <p>Executed: {data.transactionHash}</p>
+          <p>Gas used: {data.receipt.gasUsed.toString()}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+---
 
 ## Development
 
